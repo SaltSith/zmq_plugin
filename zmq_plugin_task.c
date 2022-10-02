@@ -15,8 +15,6 @@
 #include <czmq.h>
 
 
-#define zmq_plugin_task_QUEUE_NAME  "/plugin_kenobi2"
-
 #define POLL_TIMEOUT_DEFAULT    (50)
 #define POLL_TIMEOUT_INFINITY   (-1)
 #define POLL_TIMEOUT            POLL_TIMEOUT_DEFAULT
