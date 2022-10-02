@@ -1,0 +1,1 @@
+add_library(zmq_plugin_socket zmq_plugin_socket.c zmq_plugin_socket.h)

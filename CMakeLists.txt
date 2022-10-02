@@ -1,0 +1,1 @@
+add_library(zmq_plugin zmq_plugin_task.h zmq_plugin_task.c)
