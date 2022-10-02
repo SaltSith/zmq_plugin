@@ -75,7 +75,12 @@ static void
 
     plugin_ready = true;
 
-    zmq_plugin_socket_send_message(wakeup_message, strlen(wakeup_message));
+    sleep(1);
+
+    int res = zmq_plugin_socket_send_message(wakeup_message, strlen(wakeup_message));
+    (void)res;
+
+
 
     items[0].socket = NULL;
     items[0].fd     = zmq_plugin_task_queue;
