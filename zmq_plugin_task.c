@@ -62,6 +62,7 @@ static void zmq_plugin_task_check_queues(void);
 
 static void zmq_plugin_task_pop_message(void);
 
+bool parter_live = false;
 
 static void 
 *zmq_plugin_task(void *arg)
@@ -99,8 +100,15 @@ static void
 			}
     	} while(rc > 0);
 
-		zmq_plugin_socket_send_message ("Kenobi Req\0", strlen("Kenobi Req\0"));
-
+        if (parter_live) {
+        	static int i = 0;
+        	char buff[80];
+        	memset(buff, '/0', 80);
+        	sprintf(buff, "Kenobi req %d", i);
+    		zmq_plugin_socket_send_message (buff, strlen(buff));
+    		i++;
+            parter_live = false;
+        }
 		sleep(1);
 
         printf("-------------------Plugin task loop--------------\r\n");
@@ -141,7 +149,7 @@ zmq_plugin_task_check_queues(void)
 
     if (items[1].revents & ZMQ_POLLIN) {
         items[1].revents &= ~ZMQ_POLLIN;
-
+        parter_live = true;
         char buffer [100];
         memset(buffer, '\0', sizeof(buffer));
         zmq_recv(zmq_plugin_socket_get(), buffer, 100, ZMQ_DONTWAIT);
