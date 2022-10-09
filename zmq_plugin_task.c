@@ -81,8 +81,6 @@ static void
     int res = zmq_plugin_socket_send_message(wakeup_message, strlen(wakeup_message));
     (void)res;
 
-
-
     items[0].socket = NULL;
     items[0].fd     = zmq_plugin_task_queue;
     items[0].events = ZMQ_POLLIN;
@@ -103,7 +101,7 @@ static void
         if (parter_live) {
         	static int i = 0;
         	char buff[80];
-        	memset(buff, '/0', 80);
+        	memset(buff, '\0', 80);
         	sprintf(buff, "Kenobi req %d", i);
     		zmq_plugin_socket_send_message (buff, strlen(buff));
     		i++;
