@@ -26,8 +26,13 @@ typedef enum {
 } zmq_plugin_task_event_type_t;
 
 typedef struct {
+    uint8_t *msg;
+    size_t len;
+} msg_info;
+
+typedef struct {
     zmq_plugin_task_event_type_t event;
-    void *args;
+    msg_info args;
 } zmq_plugin_task_event_t;
 
 
@@ -38,19 +43,23 @@ static int zmq_plugin_task_queue = -1;
 static zmq_pollitem_t items[2];
 
 
-typedef void(*zmq_plugin_task_event_handler)(void *args);
+typedef void(*zmq_plugin_task_event_handler)(msg_info args);
 
-static void zmq_plugin_task_event_handler_send_msg(void *args);
+static void zmq_plugin_task_event_handler_send_msg(msg_info args);
 
 zmq_plugin_task_event_handler zmq_plugin_task_event_handlers[PLUGIN_EVENT_LAST] = {
     zmq_plugin_task_event_handler_send_msg,
 };
 
 static void
-zmq_plugin_task_event_handler_send_msg(void *args)
+zmq_plugin_task_event_handler_send_msg(msg_info args)
 {
 
-    printf("Sending message from handler\r\n");
+    printf("Sending message from handler %x %d\r\n", args.msg, args.len);
+
+    zmq_plugin_socket_send_message(args.msg, args.len);
+
+    free(args.msg);
 }
 
 
@@ -222,14 +231,15 @@ zmq_plugin_task_cleanup_handler(void *arg)
 }
 
 bool
-zmq_plugin_task_send_msg(void *msg)
+zmq_plugin_task_send_msg(uint8_t *msg, size_t len)
 {
     if (msg == NULL) {
         return false;
     }
 
     zmq_plugin_task_event_t event = {
-        .args  = msg,
+        .args = {.msg = msg,
+                   .len = len},
         .event = PLUGIN_EVENT_SEND_MESSAGE
     };
 

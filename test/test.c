@@ -23,7 +23,7 @@ void test_zmq_plugin_task_send_message_NULL_MESSAGE_PTR(void) {
     pthread_t pthread_ptr = zmq_plugin_task_handle_get();
     TEST_ASSERT(pthread_ptr != (pthread_t)NULL);
 
-    TEST_ASSERT(zmq_plugin_task_send_msg(NULL) == false);
+    TEST_ASSERT(zmq_plugin_task_send_msg(NULL, 10) == false);
 }
 
 void test_zmq_plugin_task_send_message(void) {
@@ -33,7 +33,7 @@ void test_zmq_plugin_task_send_message(void) {
     pthread_t pthread_ptr = zmq_plugin_task_handle_get();
     TEST_ASSERT(pthread_ptr != (pthread_t)NULL);
 
-    TEST_ASSERT(zmq_plugin_task_send_msg("Hello\0") == true);
+    TEST_ASSERT(zmq_plugin_task_send_msg("Hello\0", strlen("Hello\0")) == true);
 }
 
 
