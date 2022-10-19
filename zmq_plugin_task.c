@@ -55,8 +55,6 @@ static void
 zmq_plugin_task_event_handler_send_msg(msg_info args)
 {
 
-    printf("Sending message from handler %x %d\r\n", args.msg, args.len);
-
     zmq_plugin_socket_send_message(args.msg, args.len);
 
     free(args.msg);
