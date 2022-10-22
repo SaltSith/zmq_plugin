@@ -150,7 +150,6 @@ zmq_plugin_task_check_queues(void)
     if (items[0].revents & ZMQ_POLLIN) {
         items[0].revents &= ~ZMQ_POLLIN;
 
-        printf("Data is available on plugin task queue.\r\n");
         zmq_plugin_task_pop_message();
     }
 
