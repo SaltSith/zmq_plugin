@@ -66,7 +66,7 @@ int zmq_plugin_socket_destroy(void)
     return result;
 }
 
-int zmq_plugin_socket_send_message(const char *message, const int len)
+int zmq_plugin_socket_send_message(const uint8_t *message, const int len)
 {
     if (message == NULL) {
         return -1;

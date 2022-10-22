@@ -1,6 +1,7 @@
 #include "zmq_plugin_task.h"
 
 #include "zmq_plugin_socket/zmq_plugin_socket.h"
+#include "postman/postman.h"
 
 #include "../config.h"
 
@@ -17,7 +18,9 @@
 
 #define POLL_TIMEOUT_DEFAULT    (50)
 #define POLL_TIMEOUT_INFINITY   (-1)
-#define POLL_TIMEOUT            POLL_TIMEOUT_DEFAULT
+#define POLL_TIMEOUT            POLL_TIMEOUT_INFINITY
+
+#define ZMQ_RECEIVE_BUFFER_SIZE 1024
 
 
 typedef enum {
@@ -26,10 +29,24 @@ typedef enum {
 } zmq_plugin_task_event_type_t;
 
 typedef struct {
+    uint8_t *msg;
+    size_t len;
+} msg_info;
+
+typedef struct {
     zmq_plugin_task_event_type_t event;
-    void *args;
+    msg_info args;
 } zmq_plugin_task_event_t;
 
+typedef struct {
+    uint64_t restarts;
+    bool is_alive;
+    bool connected_before;
+} partner_info_t;
+
+static partner_info_t partner_info = {.restarts = 0, .is_alive = false, .connected_before = false};
+
+static uint8_t *in_message;
 
 static bool plugin_ready;
 static pthread_t zmq_plugin_task_handle;
@@ -38,19 +55,21 @@ static int zmq_plugin_task_queue = -1;
 static zmq_pollitem_t items[2];
 
 
-typedef void(*zmq_plugin_task_event_handler)(void *args);
+typedef void(*zmq_plugin_task_event_handler)(msg_info args);
 
-static void zmq_plugin_task_event_handler_send_msg(void *args);
+static void zmq_plugin_task_event_handler_send_msg(msg_info args);
 
 zmq_plugin_task_event_handler zmq_plugin_task_event_handlers[PLUGIN_EVENT_LAST] = {
     zmq_plugin_task_event_handler_send_msg,
 };
 
 static void
-zmq_plugin_task_event_handler_send_msg(void *args)
+zmq_plugin_task_event_handler_send_msg(msg_info args)
 {
 
-    printf("Sending message from handler\r\n");
+    zmq_plugin_socket_send_message(args.msg, args.len);
+
+    free(args.msg);
 }
 
 
@@ -77,8 +96,11 @@ static void
     plugin_ready = true;
 
     sleep(1);
+    uint8_t *hello_msg_buff = malloc(sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE);
+    assert(hello_msg_buff != NULL);
 
-    int res = zmq_plugin_socket_send_message(wakeup_message, strlen(wakeup_message));
+    size_t msg_len = postman_hello_message(hello_msg_buff, ZMQ_RECEIVE_BUFFER_SIZE);
+    int res = zmq_plugin_socket_send_message(hello_msg_buff, msg_len);
     (void)res;
 
     items[0].socket = NULL;
@@ -97,19 +119,6 @@ static void
 				zmq_plugin_task_check_queues();
 			}
     	} while(rc > 0);
-
-        if (parter_live) {
-        	static int i = 0;
-        	char buff[80];
-        	memset(buff, '\0', 80);
-        	sprintf(buff, "Kenobi req %d", i);
-    		zmq_plugin_socket_send_message (buff, strlen(buff));
-    		i++;
-            parter_live = false;
-        }
-		sleep(1);
-
-        printf("-------------------Plugin task loop--------------\r\n");
     }
     
     pthread_cleanup_pop(NULL);
@@ -141,27 +150,31 @@ zmq_plugin_task_check_queues(void)
     if (items[0].revents & ZMQ_POLLIN) {
         items[0].revents &= ~ZMQ_POLLIN;
 
-        printf("Data is available on plugin task queue.\r\n");
         zmq_plugin_task_pop_message();
     }
 
     if (items[1].revents & ZMQ_POLLIN) {
         items[1].revents &= ~ZMQ_POLLIN;
         parter_live = true;
-        char buffer [100];
-        memset(buffer, '\0', sizeof(buffer));
-        zmq_recv(zmq_plugin_socket_get(), buffer, 100, ZMQ_DONTWAIT);
-        printf("GET: %s \r\n", buffer);
+        const size_t message_buffer_size = sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE;
 
-		if (memcmp(buffer, wakeup_message, strlen(wakeup_message)) == 0) {
-			printf("------ PARTNER RESTART------------\r\n");
-		}
+        in_message = malloc(message_buffer_size);
 
-		if (memcmp(buffer, "ACK\0", strlen("ACK\0")) == 0) {
+        assert(in_message != NULL);
+        memset(in_message, '\0', message_buffer_size);
 
-		} else {
-			zmq_plugin_socket_send_message ("ACK\0", strlen("ACK\0"));
-		}
+        size_t msg_len = zmq_recv(zmq_plugin_socket_get(), in_message, message_buffer_size, ZMQ_DONTWAIT);
+        if (postman_send_message(in_message, msg_len) == 1) {
+            partner_info.is_alive = true;
+            if (!partner_info.connected_before) {
+                partner_info.connected_before = true;
+                printf("Partner first connection.\r\n");
+                return;
+            }
+
+            partner_info.restarts++;
+            printf("Partner %ld restart.\r\n", partner_info.restarts);
+        }
     }
 }
 
@@ -222,14 +235,15 @@ zmq_plugin_task_cleanup_handler(void *arg)
 }
 
 bool
-zmq_plugin_task_send_msg(void *msg)
+zmq_plugin_task_send_msg(uint8_t *msg, size_t len)
 {
     if (msg == NULL) {
         return false;
     }
 
     zmq_plugin_task_event_t event = {
-        .args  = msg,
+        .args = {.msg = msg,
+                   .len = len},
         .event = PLUGIN_EVENT_SEND_MESSAGE
     };
 

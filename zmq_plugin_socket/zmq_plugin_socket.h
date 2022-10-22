@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 typedef enum {
     REQUESTER = 0,
     RESPONDER,
@@ -10,6 +12,6 @@ int zmq_plugin_socket_init(const socket_role_t role, const char *addr);
 
 int zmq_plugin_socket_destroy(void);
 
-int zmq_plugin_socket_send_message(const char *message, const int len);
+int zmq_plugin_socket_send_message(const uint8_t *message, const int len);
 
 void *zmq_plugin_socket_get(void);
