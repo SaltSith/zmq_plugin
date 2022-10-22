@@ -101,6 +101,8 @@ static void
 
     size_t msg_len = postman_hello_message(hello_msg_buff, ZMQ_RECEIVE_BUFFER_SIZE);
     int res = zmq_plugin_socket_send_message(hello_msg_buff, msg_len);
+    free(hello_msg_buff);
+
     (void)res;
 
     items[0].socket = NULL;
