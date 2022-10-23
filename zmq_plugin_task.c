@@ -256,5 +256,9 @@ zmq_plugin_task_send_msg(uint8_t *msg, size_t len)
                          sizeof(zmq_plugin_task_event_t),
                          0);
 
+    if (result) {
+        free(msg);
+    }
+
     return result == 0 ? true : false;
 }
