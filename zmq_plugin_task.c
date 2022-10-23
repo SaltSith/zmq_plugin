@@ -81,7 +81,6 @@ static void zmq_plugin_task_check_queues(void);
 
 static void zmq_plugin_task_pop_message(void);
 
-bool parter_live = false;
 
 static void 
 *zmq_plugin_task(void *arg)
@@ -96,6 +95,7 @@ static void
     plugin_ready = true;
 
     sleep(1);
+
     uint8_t *hello_msg_buff = malloc(sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE);
     assert(hello_msg_buff != NULL);
 
@@ -157,9 +157,8 @@ zmq_plugin_task_check_queues(void)
 
     if (items[1].revents & ZMQ_POLLIN) {
         items[1].revents &= ~ZMQ_POLLIN;
-        parter_live = true;
-        const size_t message_buffer_size = sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE;
 
+        const size_t message_buffer_size = sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE;
         in_message = malloc(message_buffer_size);
 
         assert(in_message != NULL);
