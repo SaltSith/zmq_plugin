@@ -81,7 +81,6 @@ static void zmq_plugin_task_check_queues(void);
 
 static void zmq_plugin_task_pop_message(void);
 
-bool parter_live = false;
 
 static void 
 *zmq_plugin_task(void *arg)
@@ -96,11 +95,14 @@ static void
     plugin_ready = true;
 
     sleep(1);
+
     uint8_t *hello_msg_buff = malloc(sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE);
     assert(hello_msg_buff != NULL);
 
     size_t msg_len = postman_hello_message(hello_msg_buff, ZMQ_RECEIVE_BUFFER_SIZE);
     int res = zmq_plugin_socket_send_message(hello_msg_buff, msg_len);
+    free(hello_msg_buff);
+
     (void)res;
 
     items[0].socket = NULL;
@@ -155,9 +157,8 @@ zmq_plugin_task_check_queues(void)
 
     if (items[1].revents & ZMQ_POLLIN) {
         items[1].revents &= ~ZMQ_POLLIN;
-        parter_live = true;
-        const size_t message_buffer_size = sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE;
 
+        const size_t message_buffer_size = sizeof(uint8_t) * ZMQ_RECEIVE_BUFFER_SIZE;
         in_message = malloc(message_buffer_size);
 
         assert(in_message != NULL);
@@ -253,6 +254,10 @@ zmq_plugin_task_send_msg(uint8_t *msg, size_t len)
                          (char *)&event,
                          sizeof(zmq_plugin_task_event_t),
                          0);
+
+    if (result) {
+        free(msg);
+    }
 
     return result == 0 ? true : false;
 }
